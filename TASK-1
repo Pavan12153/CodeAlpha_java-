@@ -1,0 +1,278 @@
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+class Student {
+    private String name;
+    private List<Double> grades;
+
+    public Student(String name) {
+        this.name = name;
+        this.grades = new ArrayList<>();
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void addGrade(double grade) {
+        grades.add(grade);
+    }
+
+    public List<Double> getGrades() {
+        return grades;
+    }
+
+    public double getAverageGrade() {
+        if (grades.isEmpty()) {
+            return 0.0;
+        }
+        double sum = 0;
+        for (double grade : grades) {
+            sum += grade;
+        }
+        return sum / grades.size();
+    }
+
+    public double getHighestGrade() {
+        if (grades.isEmpty()) {
+            return 0.0;
+        }
+        return Collections.max(grades);
+    }
+
+    public double getLowestGrade() {
+        if (grades.isEmpty()) {
+            return 0.0;
+        }
+        return Collections.min(grades);
+    }
+
+    @Override
+    public String toString() {
+        return name;
+    }
+}
+
+public class StudentGradeManager extends JFrame {
+
+    private List<Student> students;
+    private JComboBox<Student> studentSelector;
+    private JTextField studentNameField;
+    private JTextField gradeField;
+    private JTextArea reportArea;
+    private JTable studentGradesTable;
+    private DefaultTableModel tableModel;
+
+    public StudentGradeManager() {
+        super("Student Grade Manager");
+        students = new ArrayList<>();
+
+        setSize(800, 600);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout(10, 10));
+
+        JPanel inputPanel = new JPanel(new GridBagLayout());
+        inputPanel.setBorder(BorderFactory.createTitledBorder("Add Student / Grade"));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        inputPanel.add(new JLabel("Student Name:"), gbc);
+
+        gbc.gridx = 1;
+        gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        studentNameField = new JTextField(20);
+        inputPanel.add(studentNameField, gbc);
+
+        gbc.gridx = 2;
+        gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        JButton addStudentButton = new JButton("Add Student");
+        addStudentButton.addActionListener(new AddStudentListener());
+        inputPanel.add(addStudentButton, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.anchor = GridBagConstraints.WEST;
+        inputPanel.add(new JLabel("Grade:"), gbc);
+
+        gbc.gridx = 1;
+        gbc.gridy = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gradeField = new JTextField(10);
+        inputPanel.add(gradeField, gbc);
+
+        gbc.gridx = 2;
+        gbc.gridy = 1;
+        gbc.fill = GridBagConstraints.NONE;
+        JButton addGradeButton = new JButton("Add Grade");
+        addGradeButton.addActionListener(new AddGradeListener());
+        inputPanel.add(addGradeButton, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.anchor = GridBagConstraints.WEST;
+        inputPanel.add(new JLabel("Select Student:"), gbc);
+
+        gbc.gridx = 1;
+        gbc.gridy = 2;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        studentSelector = new JComboBox<>();
+        studentSelector.addActionListener(e -> updateStudentGradesTable());
+        inputPanel.add(studentSelector, gbc);
+
+        add(inputPanel, BorderLayout.NORTH);
+
+        JPanel gradesPanel = new JPanel(new BorderLayout());
+        gradesPanel.setBorder(BorderFactory.createTitledBorder("Selected Student's Grades"));
+        
+        tableModel = new DefaultTableModel(new Object[]{"Grade"}, 0);
+        studentGradesTable = new JTable(tableModel);
+        JScrollPane tableScrollPane = new JScrollPane(studentGradesTable);
+        gradesPanel.add(tableScrollPane, BorderLayout.CENTER);
+
+        add(gradesPanel, BorderLayout.CENTER);
+
+        JPanel reportPanel = new JPanel(new BorderLayout());
+        reportPanel.setBorder(BorderFactory.createTitledBorder("Summary Report"));
+        
+        reportArea = new JTextArea();
+        reportArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(reportArea);
+        reportPanel.add(scrollPane, BorderLayout.CENTER);
+
+        JButton generateReportButton = new JButton("Generate Full Report");
+        generateReportButton.addActionListener(new GenerateReportListener());
+        reportPanel.add(generateReportButton, BorderLayout.SOUTH);
+
+        add(reportPanel, BorderLayout.EAST);
+
+        generateFullReport();
+    }
+
+    private class AddStudentListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String name = studentNameField.getText().trim();
+            if (!name.isEmpty()) {
+                Student newStudent = new Student(name);
+                students.add(newStudent);
+                studentSelector.addItem(newStudent);
+                studentNameField.setText("");
+                generateFullReport();
+            } else {
+                JOptionPane.showMessageDialog(StudentGradeManager.this,
+                        "Please enter a student name.", "Input Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private class AddGradeListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            Student selectedStudent = (Student) studentSelector.getSelectedItem();
+            if (selectedStudent == null) {
+                JOptionPane.showMessageDialog(StudentGradeManager.this,
+                        "Please select a student first.", "Selection Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            try {
+                double grade = Double.parseDouble(gradeField.getText());
+                if (grade >= 0 && grade <= 100) {
+                    selectedStudent.addGrade(grade);
+                    gradeField.setText("");
+                    updateStudentGradesTable();
+                    generateFullReport();
+                } else {
+                    JOptionPane.showMessageDialog(StudentGradeManager.this,
+                            "Grade must be between 0 and 100.", "Input Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(StudentGradeManager.this,
+                        "Please enter a valid number for the grade.", "Input Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void updateStudentGradesTable() {
+        tableModel.setRowCount(0);
+        Student selectedStudent = (Student) studentSelector.getSelectedItem();
+        if (selectedStudent != null) {
+            for (Double grade : selectedStudent.getGrades()) {
+                tableModel.addRow(new Object[]{grade});
+            }
+        }
+    }
+
+    private class GenerateReportListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            generateFullReport();
+        }
+    }
+
+    private void generateFullReport() {
+        StringBuilder report = new StringBuilder();
+        report.append("--- Student Grade Summary ---\n\n");
+
+        if (students.isEmpty()) {
+            report.append("No students added yet.\n");
+        } else {
+            double overallSum = 0;
+            int overallCount = 0;
+            double overallHighest = Double.MIN_VALUE;
+            double overallLowest = Double.MAX_VALUE;
+
+            for (Student student : students) {
+                report.append("Student: ").append(student.getName()).append("\n");
+                if (student.getGrades().isEmpty()) {
+                    report.append("  No grades entered.\n");
+                } else {
+                    double avg = student.getAverageGrade();
+                    double highest = student.getHighestGrade();
+                    double lowest = student.getLowestGrade();
+
+                    report.append(String.format("  Grades: %s\n", student.getGrades().toString()));
+                    report.append(String.format("  Average Score: %.2f\n", avg));
+                    report.append(String.format("  Highest Score: %.2f\n", highest));
+                    report.append(String.format("  Lowest Score: %.2f\n", lowest));
+
+                    overallSum += student.getGrades().stream().mapToDouble(Double::doubleValue).sum();
+                    overallCount += student.getGrades().size();
+                    overallHighest = Math.max(overallHighest, highest);
+                    overallLowest = Math.min(overallLowest, lowest);
+                }
+                report.append("\n");
+            }
+
+            report.append("--- Overall Statistics ---\n");
+            if (overallCount > 0) {
+                report.append(String.format("Total Students: %d\n", students.size()));
+                report.append(String.format("Overall Average Score: %.2f\n", overallSum / overallCount));
+                report.append(String.format("Overall Highest Score: %.2f\n", overallHighest));
+                report.append(String.format("Overall Lowest Score: %.2f\n", overallLowest));
+            } else {
+                report.append("No grades entered across all students.\n");
+            }
+        }
+        reportArea.setText(report.toString());
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            new StudentGradeManager().setVisible(true);
+        });
+    }
+}
